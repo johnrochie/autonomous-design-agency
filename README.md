@@ -1,36 +1,157 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Autonomous Design Agency - Client Portal
 
-## Getting Started
+An AI-powered web development agency that delivers full-service web development with 99% automation.
 
-First, run the development server:
+## Business Model
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Premium, High-Value, Low-Volume**
+- 2-4 projects per quarter
+- €8,000 - €50,000 per project
+- 99% autonomous, 1% human oversight for escalations
+
+## System Architecture
+
+```
+Layer 1: Client Portal (This Project)
+  - Secure client onboarding
+  - Project intake forms
+  - Quote generation
+  - Project tracking dashboard
+  - Communication hub
+  - Invoicing & payments
+
+Layer 2: Requirements & Design
+  - Parse client requirements
+  - Generate design concepts
+  - Create technical specifications
+  - Provide cost estimates
+
+Layer 3: Development
+  - Generate all code
+  - Implement all features
+  - Apply design system
+  - Handle responsive layouts
+
+Layer 4: Quality Assurance
+  - Automated testing
+  - Security scanning
+  - Performance optimization
+  - Accessibility compliance
+
+Layer 5: Deployment & Operations
+  - GitHub repository creation
+  - Vercel deployment
+  - Domain configuration
+  - SSL certificates
+  - Monitoring & alerts
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend:** Next.js 16 (App Router)
+- **Backend:** Supabase (PostgreSQL + Auth + Realtime)
+- **Payments:** Stripe Connect
+- **AI:** Cursor CLI, OpenHands
+- **Testing:** Jest, Testing Foundation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Quick Start
 
-## Learn More
+```bash
+npm install
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+Open http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Business Priorities
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Non-Negotiables
+✅ GDPR Compliance
+✅ Data Privacy & Security
+✅ No AI training on client data
+✅ Professional Indemnity Insurance
+✅ Legal contracts (ToS, IP, liability)
+✅ QA before every deployment
+✅ Rollback capability
 
-## Deploy on Vercel
+### Quality Gates
+✅ Tests passing
+✅ Security scan clean
+✅ Code review (AI + human spot-check)
+✅ Client approval sign-off
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Risk Management
+✅ Auto-escalation for delays > 1 week
+✅ 50% refund if unsatisfactory
+✅ Instant rollback capability
+✅ Encrypted communications
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## File Structure
+
+```
+autononomous-design-agency/
+├── app/
+│   ├── (auth)/
+│   │   ├── login/page.tsx
+│   │   ├── signup/page.tsx
+│   │   └── reset-password/page.tsx
+│   ├── dashboard/
+│   │   ├── page.tsx
+│   │   ├── projects/page.tsx
+│   │   ├── quotes/page.tsx
+│   │   ├── invoices/page.tsx
+│   │   └── communications/page.tsx
+│   ├── client/
+│   │   ├── onboarding/page.tsx
+│   │   ├── intake/page.tsx
+│   │   ├── requirements/page.tsx
+│   │   ├── design-approval/page.tsx
+│   │   └── final-review/page.tsx
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── globals.css
+├── components/
+│   ├── navigation/
+│   ├── auth/
+│   ├── projects/
+│   ├── quotes/
+│   ├── invoices/
+│   └── communications/
+├── lib/
+│   ├── supabase.ts
+│   ├── stripe.ts
+│   └── orchestrator.ts
+└── docs/
+    ├── WORKFLOWS.md
+    ├── SECURITY.md
+    ├── ESCALATION.md
+    └── TESTING.md
+```
+
+## Current Status
+
+**Phase: Build Stage (Started 2026-02-10)**
+
+### Completed
+- ✅ Workspace created
+- ✅ Next.js 16 initialized
+- ✅ TypeScript configured
+- ✅ Tailwind CSS configured
+
+### Next Steps
+1. Install Supabase client
+2. Install Stripe SDK
+3. Set up authentication system
+4. Create client intake forms
+5. Build project dashboard
+6. Implement quote generation
+7. Add Stripe payments
+8. Create orchestrator system
+
+## Contact
+
+**Founder:** John Roche (@johnrochie)
+**Location:** Ireland
+**Business Type:** Ltd. (John handles business setup)
+
+---
