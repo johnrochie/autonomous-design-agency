@@ -54,3 +54,4 @@ See `supabase/schema.sql` for complete database schema including:
 
 ## License
 © 2026 Autonomous Design Agency. All rights reserved.
+
