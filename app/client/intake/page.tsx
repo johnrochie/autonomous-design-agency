@@ -76,11 +76,13 @@ export default function IntakePage() {
         fullName: formData.fullName,
         companyName: formData.companyName,
         industry: formData.industry,
+        projectName: formData.projectName,
+        projectType: formData.projectType,
+        description: formData.description,
+        features: formData.features,
+        timelineRange: formData.timelineRange,
+        budgetRange: formData.budgetRange,
       });
-
-      // Note: For now, we're just creating the client record
-      // In the next phase (3B), we'll create the project and generate a quote
-      // For now, we'll show success and the project will be visible after manual setup
 
       setLoading(false);
       setStep(5);
