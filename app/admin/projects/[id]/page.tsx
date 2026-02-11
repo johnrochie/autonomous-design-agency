@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getProjectById, updateProjectStatus } from '@/lib/supabase';
+import { getProjectById, updateProjectStatus, generateProjectQuote, approveQuote, rejectQuote } from '@/lib/supabase';
 import { ProjectStatusBadge } from '@/components/admin/ProjectStatusBadge';
+import { formatAmount } from '@/lib/quote-generator';
 
 interface Project {
   id: string;
@@ -62,6 +63,8 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [generatingQuote, setGeneratingQuote] = useState(false);
+  const [quoteActionLoading, setQuoteActionLoading] = useState<'approve' | 'reject' | null>(null);
 
   useEffect(() => {
     async function loadProject() {
@@ -92,6 +95,51 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       alert('Failed to update status: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGenerateQuote = async () => {
+    if (!confirm('Generate AI quote for this project? This will calculate an estimated price breakdown.')) return;
+
+    try {
+      setGeneratingQuote(true);
+      const result = await generateProjectQuote(params.id);
+      setProject(result.project as Project);
+    } catch (err: any) {
+      console.error('Error generating quote:', err);
+      alert('Failed to generate quote: ' + err.message);
+    } finally {
+      setGeneratingQuote(false);
+    }
+  };
+
+  const handleApproveQuote = async () => {
+    if (!confirm('Approve this quote and notify the client? The project status will change to "Confirmed".')) return;
+
+    try {
+      setQuoteActionLoading('approve');
+      const updated = await approveQuote(params.id);
+      setProject(updated as Project);
+    } catch (err: any) {
+      console.error('Error approving quote:', err);
+      alert('Failed to approve quote: ' + err.message);
+    } finally {
+      setQuoteActionLoading(null);
+    }
+  };
+
+  const handleRejectQuote = async () => {
+    if (!confirm('Reject this quote? The project will remain in "Quoted" status.')) return;
+
+    try {
+      setQuoteActionLoading('reject');
+      const updated = await rejectQuote(params.id);
+      setProject(updated as Project);
+    } catch (err: any) {
+      console.error('Error rejecting quote:', err);
+      alert('Failed to reject quote: ' + err.message);
+    } finally {
+      setQuoteActionLoading(null);
     }
   };
 
@@ -190,7 +238,13 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             {/* Quote Breakdown */}
             {project.quote_breakdowns && project.quote_breakdowns.length > 0 && (
               <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">Quote Breakdown</h2>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-gray-900">Quote Breakdown</h2>
+                  <div className="text-sm">
+                    <span className="text-gray-600">Estimated Total: </span>
+                    <span className="font-bold text-base">{formatAmount(project.quote_amount_cents || 0)}</span>
+                  </div>
+                </div>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead>
@@ -216,6 +270,12 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                           </td>
                         </tr>
                       ))}
+                      <tr className="bg-gray-50 font-semibold">
+                        <td className="px-3 py-2 text-sm text-gray-900" colSpan={4}>Total Quote</td>
+                        <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                          {formatAmount(project.quote_amount_cents || 0)}
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -255,15 +315,15 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
             {/* Quote Info */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-3">Quote</h2>
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Amount:</span>
-                  <span className="font-semibold">€{quoteEur}</span>
+                  <span className="font-semibold text-lg">{formatAmount(project.quote_amount_cents || 0)}</span>
                 </div>
                 {project.quote_status && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Quote Status:</span>
-                    <span className="capitalize">{project.quote_status}</span>
+                    <span className="capitalize font-medium">{project.quote_status}</span>
                   </div>
                 )}
                 {project.timeline_range && (
@@ -278,6 +338,74 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
                     <span className="font-semibold">€{project.budget_range}k</span>
                   </div>
                 )}
+              </div>
+
+              {/* Quote Actions */}
+              <div className="space-y-2 pt-4 border-t border-gray-200">
+                {!project.quote_amount_cents ? (
+                  <button
+                    onClick={handleGenerateQuote}
+                    disabled={generatingQuote}
+                    className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {generatingQuote ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Generating Quote...
+                      </>
+                    ) : (
+                      'Generate AI Quote'
+                    )}
+                  </button>
+                ) : project.quote_status === 'pending' ? (
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleApproveQuote}
+                      disabled={quoteActionLoading !== null || generatingQuote}
+                      className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {quoteActionLoading === 'approve' ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Approving...
+                        </>
+                      ) : (
+                        'Approve & Confirm'
+                      )}
+                    </button>
+                    <button
+                      onClick={handleRejectQuote}
+                      disabled={quoteActionLoading !== null || generatingQuote}
+                      className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {quoteActionLoading === 'reject' ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Rejecting...
+                        </>
+                      ) : (
+                        'Reject Quote'
+                      )}
+                    </button>
+                  </div>
+                ) : project.quote_status === 'accepted' ? (
+                  <div className="text-center py-2 px-3 bg-green-100 rounded-lg text-green-700">
+                    Quote accepted ✓
+                  </div>
+                ) : project.quote_status === 'rejected' ? (
+                  <div className="text-center py-2 px-3 bg-red-100 rounded-lg text-red-700">
+                    Quote rejected
+                  </div>
+                ) : null}
               </div>
             </div>
 

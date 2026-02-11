@@ -137,35 +137,176 @@ export async function createProject(projectData: any) {
 
 export async function createClientIntake(clientData: any) {
   if (!supabase) throw new Error('Supabase client not initialized');
-  // First, create client record
-  const { data: client, error: clientError } = await supabase
+
+  // First, create or get client record
+  let client;
+
+  // Check if client already exists
+  const { data: existingClient } = await supabase
     .from('clients')
+    .select('*')
+    .eq('email', clientData.email)
+    .single();
+
+  if (existingClient) {
+    client = existingClient;
+  } else {
+    // Create new client
+    const { data: newClient, error: clientError } = await supabase
+      .from('clients')
+      .insert({
+        email: clientData.email,
+        full_name: clientData.fullName,
+        company_name: clientData.companyName,
+        industry: clientData.industry,
+      })
+      .select()
+      .single();
+
+    if (clientError) throw clientError;
+    client = newClient;
+  }
+
+  // Create project record
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
     .insert({
-      email: clientData.email,
-      full_name: clientData.fullName,
-      company_name: clientData.companyName,
-      industry: clientData.industry,
+      client_id: client.id,
+      name: clientData.projectName,
+      type: clientData.projectType,
+      status: 'intake',
+      description: clientData.description,
+      features: clientData.features || [],
+      timeline_range: clientData.timelineRange,
+      budget_range: clientData.budgetRange,
     })
     .select()
     .single();
 
-  if (clientError) {
-    // Client might already exist
-    console.log('Client already exists, fetching...');
-    const { data: existingClient } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('email', clientData.email)
-      .single();
+  if (projectError) throw projectError;
 
-    if (!existingClient) {
-      throw clientError;
-    }
+  return { client, project };
+}
 
-    return existingClient;
-  }
+// Update project (used when generating quote)
+export async function updateProject(projectId: string, updates: any) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase
+    .from('projects')
+    .update(updates)
+    .eq('id', projectId)
+    .select()
+    .single();
 
-  return client;
+  if (error) throw error;
+
+  return data;
+}
+
+/**
+ * Generate and save quote for a project
+ */
+export async function generateProjectQuote(projectId: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  // Import quote generator
+  const { calculateQuote } = await import('./quote-generator');
+
+  // Get project data
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single();
+
+  if (projectError) throw projectError;
+  if (!project) throw new Error('Project not found');
+
+  // Calculate quote
+  const quote = calculateQuote({
+    type: project.type as any,
+    description: project.description,
+    features: project.features || [],
+    timelineRange: project.timeline_range || undefined,
+    budgetRange: project.budget_range || undefined,
+  });
+
+  // Update project with quote amount and status
+  const { data: updatedProject, error: updateError } = await supabase
+    .from('projects')
+    .update({
+      quote_amount_cents: quote.amountCents,
+      quote_status: 'pending',
+      status: 'quoted',
+    })
+    .eq('id', projectId)
+    .select()
+    .single();
+
+  if (updateError) throw updateError;
+
+  // Insert quote breakdown rows
+  const { error: breakdownError } = await supabase
+    .from('quote_breakdowns')
+    .insert(
+      quote.breakdown.map((item) => ({
+        project_id: projectId,
+        phase: item.phase,
+        component: item.component,
+        description: item.description,
+        estimated_days: item.estimatedDays,
+        rate_per_day: item.ratePerDay,
+        amount_cents: item.amountCents,
+      }))
+    );
+
+  if (breakdownError) throw breakdownError;
+
+  return {
+    project: updatedProject,
+    quote,
+  };
+}
+
+/**
+ * Approve quote
+ */
+export async function approveQuote(projectId: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data, error } = await supabase
+    .from('projects')
+    .update({
+      quote_status: 'accepted',
+      status: 'confirmed',
+    })
+    .eq('id', projectId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+/**
+ * Reject quote
+ */
+export async function rejectQuote(projectId: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data, error } = await supabase
+    .from('projects')
+    .update({
+      quote_status: 'rejected',
+    })
+    .eq('id', projectId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return data;
 }
 
 // Real-time subscriptions
