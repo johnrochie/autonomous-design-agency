@@ -1,182 +1,195 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Return null during build time when env vars are not available
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
-export type Database = {
-  public: {
-    Tables: {
-      profiles: {
-        Row: {
-          id: string;
-          created_at: string;
-          email: string;
-          full_name: string | null;
-          company_name: string | null;
-          role: 'client' | 'admin';
-        };
-        Insert: {
-          id: string;
-          created_at?: string;
-          email: string;
-          full_name?: string | null;
-          company_name?: string | null;
-          role: 'client' | 'admin';
-        };
-        Update: {
-          id: string;
-          created_at?: string;
-          email?: string;
-          full_name?: string | null;
-          company_name?: string | null;
-          role?: 'client' | 'admin';
-        };
-      };
-      projects: {
-        Row: {
-          id: string;
-          client_id: string;
-          project_name: string;
-          project_type: 'portfolio' | 'ecommerce' | 'saas' | 'custom';
-          status: 'intake' | 'design' | 'development' | 'qa' | 'deployment' | 'completed';
-          budget_range: string;
-          timeline_weeks: number;
-          description: string;
-          requirements: object;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          client_id: string;
-          project_name: string;
-          project_type: 'portfolio' | 'ecommerce' | 'saas' | 'custom';
-          budget_range: string;
-          timeline_weeks: number;
-          description: string;
-          requirements?: object;
-          status?: 'intake' | 'design' | 'development' | 'qa' | 'deployment' | 'completed';
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id: string;
-          client_id?: string;
-          project_name?: string;
-          project_type?: 'portfolio' | 'ecommerce' | 'saas' | 'custom';
-          status?: 'intake' | 'design' | 'development' | 'qa' | 'deployment' | 'completed';
-          budget_range?: string;
-          timeline_weeks?: number;
-          description?: string;
-          requirements?: object;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      quotes: {
-        Row: {
-          id: string;
-          project_id: string;
-          amount: number;
-          status: 'draft' | 'pending' | 'approved' | 'rejected';
-          deposit_amount: number;
-          terms: string;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id: string;
-          project_id: string;
-          amount: number;
-          deposit_amount: number;
-          terms: string;
-          status?: 'draft' | 'pending' | 'approved' | 'rejected';
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id: string;
-          project_id?: string;
-          amount?: number;
-          status?: 'draft' | 'pending' | 'approved' | 'rejected';
-          deposit_amount?: number;
-          terms?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-      };
-      invoices: {
-        Row: {
-          id: string;
-          project_id: string;
-          invoice_number: string;
-          amount: number;
-          status: 'pending' | 'paid' | 'overdue';
-          due_date: string;
-          paid_at: string | null;
-          stripe_payment_intent_id: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id: string;
-          project_id: string;
-          invoice_number: string;
-          amount: number;
-          due_date: string;
-          status?: 'pending' | 'paid' | 'overdue';
-          stripe_payment_intent_id?: string | null;
-          paid_at?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id: string;
-          project_id?: string;
-          invoice_number?: string;
-          amount?: number;
-          status?: 'pending' | 'paid' | 'overdue';
-          due_date?: string;
-          stripe_payment_intent_id?: string | null;
-          paid_at?: string | null;
-          created_at?: string;
-        };
-      };
-      communications: {
-        Row: {
-          id: string;
-          project_id: string;
-          type: 'email' | 'status_update' | 'requirement' | 'approval';
-          subject: string;
-          body: string;
-          from: string;
-          to: string;
-          status: 'sent' | 'read' | 'replied';
-          created_at: string;
-        };
-        Insert: {
-          id: string;
-          project_id: string;
-          type: 'email' | 'status_update' | 'requirement' | 'approval';
-          subject: string;
-          body: string;
-          from: string;
-          to: string;
-          status?: 'sent' | 'read' | 'replied';
-          created_at?: string;
-        };
-        Update: {
-          id: string;
-          project_id?: string;
-          type?: 'email' | 'status_update' | 'requirement' | 'approval';
-          subject?: string;
-          body?: string;
-          from?: string;
-          to?: string;
-          status?: 'sent' | 'read' | 'replied';
-          created_at?: string;
-        };
-      };
-    };
-  };
-};
+// Auth functions
+export async function signUp(email: string, password: string, fullName: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: fullName,
+      },
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function signIn(email: string, password: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function signOut() {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    throw error;
+  }
+}
+
+export async function getCurrentUser() {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) {
+    throw error;
+  }
+  return user;
+}
+
+export async function getCurrentUserProfile() {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+
+  if (error) {
+    // Profile might not exist yet, create it
+    console.log('Profile not found, creating...');
+    const { data: newProfile, error: createError } = await supabase
+      .from('profiles')
+      .insert({
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || user.email?.split('@')[0],
+        role: 'client',
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      throw createError;
+    }
+
+    return newProfile;
+  }
+
+  return data;
+}
+
+export async function resetPassword(email: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/auth/reset-password`,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+// Database functions
+export async function getClientProjects(clientEmail: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function createProject(projectData: any) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase
+    .from('projects')
+    .insert(projectData)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+export async function createClientIntake(clientData: any) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  // First, create client record
+  const { data: client, error: clientError } = await supabase
+    .from('clients')
+    .insert({
+      email: clientData.email,
+      full_name: clientData.fullName,
+      company_name: clientData.companyName,
+      industry: clientData.industry,
+    })
+    .select()
+    .single();
+
+  if (clientError) {
+    // Client might already exist
+    console.log('Client already exists, fetching...');
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('email', clientData.email)
+      .single();
+
+    if (!existingClient) {
+      throw clientError;
+    }
+
+    return existingClient;
+  }
+
+  return client;
+}
+
+// Real-time subscriptions
+export function subscribeToMessages(projectId: string | null, callback: (payload: any) => void) {
+  if (!supabase) {
+    console.error('Supabase client not initialized');
+    return null;
+  }
+
+  if (!projectId) return null;
+
+  const channel = supabase
+    .channel(`messages:${projectId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `project_id=eq.${projectId}`,
+      },
+      callback
+    )
+    .subscribe();
+
+  return channel;
+}
