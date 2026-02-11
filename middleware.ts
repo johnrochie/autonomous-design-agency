@@ -6,21 +6,32 @@ const publicPaths = ['/', '/auth/login', '/auth/signup'];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get('supabase-auth-token')?.value;
+
+  // Check for any Supabase auth cookies (project-specific pattern: sb-<ref>-access-token)
+  const cookies = request.cookies.getAll();
+  const hasSupabaseAuth = cookies.some(cookie =>
+    cookie.name.startsWith('sb-') &&
+    (cookie.name.includes('-access-token') ||
+     cookie.name.includes('-refresh-token'))
+  );
 
   const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
   const isAuthPage = pathname.startsWith('/auth/');
-  const isDashboardPage = pathname.startsWith('/dashboard/') || pathname.startsWith('/client/');
+  const isDashboardPage = pathname.startsWith('/dashboard/') ||
+                        pathname.startsWith('/client/') ||
+                        pathname.startsWith('/admin/');
 
-  if (isAuthPage && token) {
+  if (isAuthPage && hasSupabaseAuth) {
     // Redirect authenticated users from auth pages to dashboard
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  if (isDashboardPage && !token) {
+  if (isDashboardPage && !hasSupabaseAuth) {
     // Redirect unauthenticated users from protected pages to login
     const loginUrl = new URL('/auth/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
+    if (pathname !== '/dashboard') {
+      loginUrl.searchParams.set('redirect', pathname);
+    }
     return NextResponse.redirect(loginUrl);
   }
 
