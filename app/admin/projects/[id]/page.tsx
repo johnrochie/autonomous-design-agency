@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getProjectById, updateProjectStatus, generateProjectQuote, approveQuote, rejectQuote } from '@/lib/supabase';
+import { getProjectById, updateProjectStatus, generateProjectQuote, approveQuote, rejectQuote, getCurrentUser } from '@/lib/supabase';
 import { ProjectStatusBadge } from '@/components/admin/ProjectStatusBadge';
 import { formatAmount } from '@/lib/quote-generator';
+import MessagePanel from '@/components/shared/MessagePanel';
+import type { User } from '@supabase/supabase-js';
 
 interface Project {
   id: string;
@@ -66,6 +68,7 @@ export default function ProjectDetailPage({ params }: { params: { id: string } |
   const [generatingQuote, setGeneratingQuote] = useState(false);
   const [quoteActionLoading, setQuoteActionLoading] = useState<'approve' | 'reject' | null>(null);
   const [resolvedId, setResolvedId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     async function resolveParams() {
@@ -101,6 +104,17 @@ export default function ProjectDetailPage({ params }: { params: { id: string } |
     }
 
     resolveParams();
+
+    // Load current user for messaging
+    async function loadUser() {
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error('Error loading user:', err);
+      }
+    }
+    loadUser();
   }, [params]);
 
   const handleStatusChange = async (newStatus: string) => {
@@ -470,6 +484,24 @@ export default function ProjectDetailPage({ params }: { params: { id: string } |
                   )}
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+
+        {/* Messages Section - Full Width */}
+        <div className="mt-8 bg-white rounded-lg shadow-lg overflow-hidden">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-xl font-bold text-gray-900">Project Messages</h2>
+            <p className="mt-1 text-sm text-gray-600">Communicate with the client about this project</p>
+          </div>
+          <div className="h-[500px]">
+            {currentUser && resolvedId && (
+              <MessagePanel
+                projectId={resolvedId}
+                currentUserId={currentUser.id}
+                currentUserType="agent"
+                isClientView={false}
+              />
             )}
           </div>
         </div>

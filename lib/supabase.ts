@@ -336,6 +336,117 @@ export function subscribeToMessages(projectId: string | null, callback: (payload
 }
 
 // ========================
+// Messaging Functions
+// ========================
+
+/**
+ * Get messages for a project
+ */
+export async function getMessages(projectId: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select(`
+      *,
+      profiles (
+        id,
+        email,
+        full_name,
+        role
+      )
+    `)
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  return data || [];
+}
+
+/**
+ * Send a message to a project
+ */
+export async function sendMessage(
+  projectId: string,
+  senderId: string,
+  senderType: 'client' | 'agent',
+  content: string
+) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({
+      project_id: projectId,
+      sender_id: senderId,
+      sender_type: senderType,
+      content: content.trim(),
+    })
+    .select(`
+      *,
+      profiles (
+        id,
+        email,
+        full_name,
+        role
+      )
+    `)
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+/**
+ * Mark messages as read (for clients)
+ */
+export async function markMessagesAsRead(projectId: string, userId: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data, error } = await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('project_id', projectId)
+    .neq('sender_id', userId) // Don't mark own messages as read
+    .is('read_at', null)
+    .select();
+
+  if (error) throw error;
+
+  return data || [];
+}
+
+/**
+ * Get unread message count for user
+ */
+export async function getUnreadMessageCount(userId: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  // Get client's projects
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id')
+    .in('client_id', (await getClientProjects(userId as any)).map((p: any) => p.client_id));
+
+  if (!projects || projects.length === 0) return 0;
+
+  const projectIds = projects.map((p: any) => p.id).join(',');
+
+  const { count, error } = await supabase
+    .from('messages')
+    .select('*', { count: 'exact', head: true })
+    .or(`project_id.in.(${projectIds})`)
+    .neq('sender_id', userId)
+    .is('read_at', null);
+
+  if (error) throw error;
+
+  return count || 0;
+}
+
+// ========================
 // Admin Functions
 // ========================
 
