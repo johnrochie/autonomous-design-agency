@@ -4,7 +4,6 @@ const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
 const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: '2024-06-20',
   typescript: true,
 });
 
