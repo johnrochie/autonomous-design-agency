@@ -379,6 +379,13 @@ export async function getProjectStats() {
 // Get single project by ID
 export async function getProjectById(projectId: string) {
   if (!supabase) throw new Error('Supabase client not initialized');
+
+  // Validate UUID format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(projectId)) {
+    throw new Error(`Invalid project ID format: ${projectId}`);
+  }
+
   const { data, error } = await supabase
     .from('projects')
     .select(`
@@ -390,7 +397,9 @@ export async function getProjectById(projectId: string) {
     .single();
 
   if (error) {
-    throw error;
+    // Better error message
+    console.error('getProjectById error:', error);
+    throw new Error(`Failed to load project: ${error.message || error.code}`);
   }
 
   return data;

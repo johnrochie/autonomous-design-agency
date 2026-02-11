@@ -68,13 +68,22 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
   useEffect(() => {
     async function loadProject() {
+      // Guard: Don't load if params.id is not available yet
+      if (!params.id || params.id === 'undefined') {
+        setError('Project ID not found in URL');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
+        console.log('Loading project with ID:', params.id); // Debug log
         const data = await getProjectById(params.id);
+        console.log('Project loaded:', data); // Debug log
         setProject(data as Project);
       } catch (err: any) {
         console.error('Error loading project:', err);
-        setError(err.message);
+        setError(err.message || 'Failed to load project');
       } finally {
         setLoading(false);
       }
