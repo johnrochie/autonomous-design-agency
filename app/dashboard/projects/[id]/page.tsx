@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getMessages, getCurrentUser, getClientProjects } from '@/lib/supabase';
 import MessagePanel from '@/components/shared/MessagePanel';
-import { ArrowLeft, Calendar, FileText } from 'lucide-react';
+import MilestoneViewer from '@/components/shared/MilestoneViewer';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { formatAmount } from '@/lib/quote-generator';
 
 interface Message {
@@ -265,56 +266,10 @@ export default function ClientProjectPage({ params }: { params: { id: string } |
             </div>
           </div>
 
-          {/* Right Column - Timeline & Notes */}
+          {/* Right Column - Milestones */}
           <div className="space-y-6">
-            {/* Timeline */}
-            <div className="bg-[#1a1a1a] p-6 rounded-2xl">
-              <h2 className="font-serif text-xl font-bold mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-cyan-400" />
-                Project Timeline
-              </h2>
-              <div className="space-y-4">
-                {['intake', 'design', 'development', 'qa', 'deployment', 'completed'].map((status) => {
-                  const isComplete = ['intake', 'design', 'development'].includes(status);
-                  const isCurrent = project.status === status;
-                  const label = status.charAt(0).toUpperCase() + status.slice(1);
-
-                  return (
-                    <div key={status} className="flex items-center gap-3">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                          isComplete
-                            ? 'bg-green-500'
-                            : isCurrent
-                            ? 'bg-cyan-500 animate-pulse'
-                            : 'bg-gray-700'
-                        }`}
-                      >
-                        {isComplete ? '✓' : isCurrent ? '→' : '○'}
-                      </div>
-                      <span
-                        className={`${
-                          isCurrent ? 'text-cyan-400 font-semibold' : 'text-gray-400'
-                        }`}
-                      >
-                        {label}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Status Notes (placeholder) */}
-            <div className="bg-[#1a1a1a] p-6 rounded-2xl">
-              <h2 className="font-serif text-xl font-bold mb-3">Status Notes</h2>
-              <p className="text-gray-400 text-sm">
-                This section will show important updates and milestones for your project.
-              </p>
-              <p className="text-gray-500 text-xs mt-2">
-                Coming soon in Phase 3 Sprint 5
-              </p>
-            </div>
+            {/* Active Milestones */}
+            {resolvedId && <MilestoneViewer projectId={resolvedId} />}
           </div>
         </div>
       </main>

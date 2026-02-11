@@ -447,6 +447,161 @@ export async function getUnreadMessageCount(userId: string) {
 }
 
 // ========================
+// Milestone Functions
+// ========================
+
+export interface Milestone {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'blocked';
+  due_date?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+}
+
+/**
+ * Get milestones for a project
+ */
+export async function getMilestones(projectId: string): Promise<Milestone[]> {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data, error } = await supabase
+    .from('milestones')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+
+  return data || [];
+}
+
+/**
+ * Create a new milestone
+ */
+export async function createMilestone(
+  projectId: string,
+  data: {
+    name: string;
+    description?: string;
+    due_date?: string;
+  }
+): Promise<Milestone> {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data: milestone, error } = await supabase
+    .from('milestones')
+    .insert({
+      project_id: projectId,
+      name: data.name.trim(),
+      description: data.description?.trim() || null,
+      due_date: data.due_date || null,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return milestone as Milestone;
+}
+
+/**
+ * Update milestone status
+ */
+export async function updateMilestoneStatus(
+  milestoneId: string,
+  status: 'pending' | 'in_progress' | 'completed' | 'blocked'
+): Promise<Milestone> {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const updateData: any = { status };
+
+  // Auto-set completed_at timestamp
+  if (status === 'completed') {
+    updateData.completed_at = new Date().toISOString();
+  }
+
+  const { data, error } = await supabase
+    .from('milestones')
+    .update(updateData)
+    .eq('id', milestoneId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return data as Milestone;
+}
+
+/**
+ * Update milestone details
+ */
+export async function updateMilestone(
+  milestoneId: string,
+  updates: {
+    name?: string;
+    description?: string;
+    due_date?: string;
+  }
+): Promise<Milestone> {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { data, error } = await supabase
+    .from('milestones')
+    .update({
+      ...(updates.name && { name: updates.name.trim() }),
+      ...(updates.description !== undefined && {
+        description: updates.description.trim() || null,
+      }),
+      ...(updates.due_date !== undefined && { due_date: updates.due_date || null }),
+    })
+    .eq('id', milestoneId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return data as Milestone;
+}
+
+/**
+ * Delete a milestone
+ */
+export async function deleteMilestone(milestoneId: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const { error } = await supabase
+    .from('milestones')
+    .delete()
+    .eq('id', milestoneId);
+
+  if (error) throw error;
+}
+
+/**
+ * Get milestone progress for a project
+ */
+export async function getMilestoneProgress(projectId: string) {
+  const milestones = await getMilestones(projectId);
+
+  const total = milestones.length;
+  const completed = milestones.filter((m) => m.status === 'completed').length;
+  const inProgress = milestones.filter((m) => m.status === 'in_progress').length;
+  const blocked = milestones.filter((m) => m.status === 'blocked').length;
+
+  return {
+    total,
+    completed,
+    inProgress,
+    blocked,
+    pending: total - completed - inProgress - blocked,
+    percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
+  };
+}
+
+// ========================
 // Admin Functions
 // ========================
 

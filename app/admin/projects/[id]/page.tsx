@@ -6,6 +6,7 @@ import { getProjectById, updateProjectStatus, generateProjectQuote, approveQuote
 import { ProjectStatusBadge } from '@/components/admin/ProjectStatusBadge';
 import { formatAmount } from '@/lib/quote-generator';
 import MessagePanel from '@/components/shared/MessagePanel';
+import MilestoneManager from '@/components/admin/MilestoneManager';
 import type { User } from '@supabase/supabase-js';
 
 interface Project {
@@ -486,6 +487,11 @@ export default function ProjectDetailPage({ params }: { params: { id: string } |
               </div>
             )}
           </div>
+        </div>
+
+        {/* Milestones Section - Full Width */}
+        <div className="mt-8">
+          {resolvedId && <MilestoneManager projectId={resolvedId} />}
         </div>
 
         {/* Messages Section - Full Width */}
