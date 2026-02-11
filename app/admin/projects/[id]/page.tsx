@@ -57,7 +57,7 @@ const typeLabels: Record<string, string> = {
   custom: 'Custom Platform',
 };
 
-export default function ProjectDetailPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailPage({ params }: { params: { id: string } | Promise<{ id: string }> }) {
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,21 +65,32 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
   const [saving, setSaving] = useState(false);
   const [generatingQuote, setGeneratingQuote] = useState(false);
   const [quoteActionLoading, setQuoteActionLoading] = useState<'approve' | 'reject' | null>(null);
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadProject() {
-      // Guard: Don't load if params.id is not available yet
-      if (!params.id || params.id === 'undefined') {
-        setError('Project ID not found in URL');
+    async function resolveParams() {
+      // Handle Next.js 15+ params Promise
+      let actualParams: { id: string };
+      if (params instanceof Promise) {
+        actualParams = await params;
+      } else {
+        actualParams = params as { id: string };
+      }
+
+      const projectId = actualParams?.id;
+      setResolvedId(projectId);
+
+      if (!projectId || projectId === 'undefined' || projectId === '[object Object]') {
+        setError(`Project ID not found: ${projectId}`);
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        console.log('Loading project with ID:', params.id); // Debug log
-        const data = await getProjectById(params.id);
-        console.log('Project loaded:', data); // Debug log
+        console.log('Loading project with ID:', projectId);
+        const data = await getProjectById(projectId);
+        console.log('Project loaded:', data);
         setProject(data as Project);
       } catch (err: any) {
         console.error('Error loading project:', err);
@@ -89,15 +100,18 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
       }
     }
 
-    loadProject();
-  }, [params.id]);
+    resolveParams();
+  }, [params]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!confirm(`Update project status to "${newStatus}"?`)) return;
 
     try {
       setSaving(true);
-      const updated = await updateProjectStatus(params.id, newStatus);
+      if (!resolvedId) {
+        throw new Error('Project ID not resolved');
+      }
+      const updated = await updateProjectStatus(resolvedId, newStatus);
       setProject({ ...project!, ...updated });
     } catch (err: any) {
       console.error('Error updating status:', err);
@@ -112,7 +126,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
     try {
       setGeneratingQuote(true);
-      const result = await generateProjectQuote(params.id);
+      if (!resolvedId) {
+        throw new Error('Project ID not resolved');
+      }
+      const result = await generateProjectQuote(resolvedId);
       setProject(result.project as Project);
     } catch (err: any) {
       console.error('Error generating quote:', err);
@@ -127,7 +144,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
     try {
       setQuoteActionLoading('approve');
-      const updated = await approveQuote(params.id);
+      if (!resolvedId) {
+        throw new Error('Project ID not resolved');
+      }
+      const updated = await approveQuote(resolvedId);
       setProject(updated as Project);
     } catch (err: any) {
       console.error('Error approving quote:', err);
@@ -142,7 +162,10 @@ export default function ProjectDetailPage({ params }: { params: { id: string } }
 
     try {
       setQuoteActionLoading('reject');
-      const updated = await rejectQuote(params.id);
+      if (!resolvedId) {
+        throw new Error('Project ID not resolved');
+      }
+      const updated = await rejectQuote(resolvedId);
       setProject(updated as Project);
     } catch (err: any) {
       console.error('Error rejecting quote:', err);
