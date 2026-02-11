@@ -193,3 +193,110 @@ export function subscribeToMessages(projectId: string | null, callback: (payload
 
   return channel;
 }
+
+// ========================
+// Admin Functions
+// ========================
+
+// Get all projects (admin only)
+export async function getAllProjects() {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase
+    .from('projects')
+    .select(`
+      *,
+      clients (*)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+// Get project stats for dashboard
+export async function getProjectStats() {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  const [allProjectsResult, newProjectsResult, quotedProjectsResult, confirmedProjectsResult] = await Promise.all([
+    supabase.from('projects').select('id, status', { count: 'exact', head: true }),
+    supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'intake'),
+    supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'quoted'),
+    supabase.from('projects').select('id', { count: 'exact', head: true }).eq('status', 'confirmed'),
+  ]);
+
+  return {
+    total: allProjectsResult.count || 0,
+    new: newProjectsResult.count || 0,
+    quoted: quotedProjectsResult.count || 0,
+    confirmed: confirmedProjectsResult.count || 0,
+  };
+}
+
+// Get single project by ID
+export async function getProjectById(projectId: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase
+    .from('projects')
+    .select(`
+      *,
+      clients (*),
+      quote_breakdowns (*)
+    `)
+    .eq('id', projectId)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+// Update project status
+export async function updateProjectStatus(projectId: string, status: string) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+  const { data, error } = await supabase
+    .from('projects')
+    .update({ status })
+    .eq('id', projectId)
+    .select()
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
+
+// Filter projects by criteria
+export async function filterProjects(filters: { status?: string; type?: string }) {
+  if (!supabase) throw new Error('Supabase client not initialized');
+
+  let query = supabase
+    .from('projects')
+    .select(`
+      *,
+      clients (*)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (filters.status) {
+    query = query.eq('status', filters.status);
+  }
+
+  if (filters.type) {
+    query = query.eq('type', filters.type);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+}
