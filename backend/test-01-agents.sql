@@ -108,7 +108,7 @@ DROP POLICY IF EXISTS "Only admins can delete agents" ON public.agents;
 CREATE POLICY "Only admins can delete agents" ON public.agents FOR DELETE USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 DROP POLICY IF EXISTS "Clients can read their project tasks" ON public.agent_tasks;
-CREATE POLICY "Clients can read their project tasks" ON public.agent_tasks FOR SELECT USING (EXISTS (SELECT 1 FROM public.projects INNER JOIN public.clients ON projects.client_id = clients.id INNER JOIN public.profiles ON clients.user_id = profiles.id WHERE projects.id = agent_tasks.project_id AND profiles.id = auth.uid()));
+CREATE POLICY "Clients can read their project tasks" ON public.agent_tasks FOR SELECT USING (EXISTS (SELECT 1 FROM public.projects INNER JOIN public.clients ON projects.client_id = clients.id INNER JOIN public.profiles ON clients.email = profiles.email WHERE projects.id = agent_tasks.project_id AND profiles.id = auth.uid()));
 
 DROP POLICY IF EXISTS "Admins can read all tasks" ON public.agent_tasks;
 CREATE POLICY "Admins can read all tasks" ON public.agent_tasks FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
@@ -117,7 +117,7 @@ DROP POLICY IF EXISTS "Only admins can modify tasks" ON public.agent_tasks;
 CREATE POLICY "Only admins can modify tasks" ON public.agent_tasks FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 DROP POLICY IF EXISTS "Clients can read their project logs" ON public.agent_logs;
-CREATE POLICY "Clients can read their project logs" ON public.agent_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.projects INNER JOIN public.clients ON projects.client_id = clients.id INNER JOIN public.profiles ON clients.user_id = profiles.id WHERE projects.id = agent_logs.project_id AND profiles.id = auth.uid()));
+CREATE POLICY "Clients can read their project logs" ON public.agent_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.projects INNER JOIN public.clients ON projects.client_id = clients.id INNER JOIN public.profiles ON clients.email = profiles.email WHERE projects.id = agent_logs.project_id AND profiles.id = auth.uid()));
 
 DROP POLICY IF EXISTS "Admins can read all logs" ON public.agent_logs;
 CREATE POLICY "Admins can read all logs" ON public.agent_logs FOR SELECT USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
@@ -126,7 +126,7 @@ DROP POLICY IF EXISTS "Only admins can insert logs" ON public.agent_logs;
 CREATE POLICY "Only admins can insert logs" ON public.agent_logs FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
 DROP POLICY IF EXISTS "Clients can read their project tracking" ON public.project_agent_tracking;
-CREATE POLICY "Clients can read their project tracking" ON public.project_agent_tracking FOR SELECT USING (EXISTS (SELECT 1 FROM public.projects INNER JOIN public.clients ON projects.client_id = clients.id INNER JOIN public.profiles ON clients.user_id = profiles.id WHERE projects.id = project_agent_tracking.project_id AND profiles.id = auth.uid()));
+CREATE POLICY "Clients can read their project tracking" ON public.project_agent_tracking FOR SELECT USING (EXISTS (SELECT 1 FROM public.projects INNER JOIN public.clients ON projects.client_id = clients.id INNER JOIN public.profiles ON clients.email = profiles.email WHERE projects.id = project_agent_tracking.project_id AND profiles.id = auth.uid()));
 
 DROP POLICY IF EXISTS "Admins can modify tracking" ON public.project_agent_tracking;
 CREATE POLICY "Admins can modify tracking" ON public.project_agent_tracking FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
