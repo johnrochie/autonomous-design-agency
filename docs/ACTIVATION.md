@@ -1,4 +1,4 @@
-# Autonomous Design Agency - Activation Guide
+# Autonomous Design Agency - Activation Guide (UPDATED)
 
 **Complete setup for full autonomous operation**
 
@@ -31,82 +31,81 @@ After activation, your system will:
 3. Click **"SQL Editor"** in left sidebar
 4. Click **"New query"**
 
-### Run all 6 schemas (in order)
+### Run all 6 test schemas (in order)
 
-**Schema 1: Agent System**
+**Test 1: Agent System**
 ```bash
-# On your computer:
-cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/schema-agents.sql
+cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/test-01-agents.sql
 ```
 → Select ALL → Copy → Paste in Supabase → Click **Run**
-→ ✅ Should see: `Autonomous Agent System database schema created successfully`
+→ ✅ Should see: `Agent System: Created successfully!`
 
-**Schema 2: Social Media**
+**Test 2: Social Media**
 ```bash
-cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/schema-social-media.sql
+cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/test-02-social.sql
 ```
 → Paste → Run
-→ ✅ Should see: `Social media bot database schema created successfully`
+→ ✅ Should see: `Social Media: Created successfully!`
 
-**Schema 3: Email Tracking**
+**Test 3: Email Tracking**
 ```bash
-cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/schema-email-tracking.sql
+cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/test-03-email.sql
 ```
 → Paste → Run
-→ ✅ Should see: `Email tracking schema created successfully`
+→ ✅ Should see: `Email Tracking: Created successfully!`
 
-**Schema 4: Cron Jobs**
+**Test 4: Cron Jobs**
 ```bash
-cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/schema-cron-jobs.sql
+cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/test-04-cron-jobs.sql
 ```
 → Paste → Run
-→ ✅ Should see: `Cron job system database schema created successfully`
+→ ✅ Should see: `Cron Jobs: Created successfully!`
 
-**Schema 5: Trend Research**
+**Test 5: Trend Research**
 ```bash
-cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/schema-trend-research.sql
+cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/test-05-trend-research.sql
 ```
 → Paste → Run
-→ ✅ Should see: `Trend research system database extensions created successfully`
+→ ✅ Should see: `Trend Research: Created successfully!`
 
-**Schema 6: Cron Trend Update**
+**Test 6: Cron Trend Update**
 ```bash
-cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/schema-cron-trend-update.sql
+cat /home/jr/.openclaw/workspace/autonomous-design-agency/backend/test-06-cron-trend-update.sql
 ```
 → Paste → Run
-→ ✅ Should see: `Trend research job added to cron jobs`
+→ ✅ Should see: `Trend Research Cron Job: Added successfully!`
 
 ---
 
 ## ✅ Step 2: Verify Database Setup (2 min)
 
-After running all schemas, verify:
+After running all 6 schemas, verify:
 
 1. In Supabase left sidebar, click **"Database"** → **"Tables"**
-2. **You should see these tables:**
+2. **You should see these 14 tables:**
 
-**Agent System:**
+**Agent System (4):**
 - ✅ `agents`
 - ✅ `agent_tasks`
 - ✅ `agent_logs`
 - ✅ `project_agent_tracking`
 
-**Social Media:**
+**Social Media (4):**
 - ✅ `social_posts`
 - ✅ `social_analytics`
 - ✅ `brand_guidelines`
 - ✅ `content_topics`
 
-**Email:**
-- ✅ `email_logs`
-
-**Cron Jobs:**
-- ✅ `cron_jobs`
-- ✅ `cron_job_logs`
-
-**Trend Research:**
+**Trend Research (2):**
 - ✅ `trending_topics`
 - ✅ `research_logs`
+
+**Email (1):**
+- ✅ `email_logs`
+
+**Cron Jobs (2):**
+- ✅ `cron_jobs`
+- ✅ `cron_job_logs`
 
 **If you see all 14 tables** → Database setup complete! 🎉
 
@@ -187,11 +186,6 @@ Go to: `https://autonomous-design-agency.vercel.app/api/cron/status`
       "status": "idle",
       "enabled": true
     },
-    {
-      "name": "Trend Research",
-      "status": "idle",
-      "enabled": true
-    },
     ...
   ]
 }
@@ -231,14 +225,13 @@ After completing Steps 1-4, your system is fully autonomous:
 ## 🆘 Troubleshooting
 
 ### Schema errors when running
-→ Copy error message and verify file
-→ Check that previous schema ran successfully
-→ Run in order (1 → 2 → 3 → 4 → 5 → 6)
+→ Copy error message → I'll fix
+→ Run in order: 1 → 2 → 3 → 4 → 5 → 6
+→ Wait 30 seconds between schemas (some caches)
 
 ### Tables not appearing
-→ Check Supabase → Database → Tables
-→ Wait 30 seconds and refresh
-→ Verify the schema showed "created successfully"
+→ Check Supabase → Database → Tables → Refresh
+→ Verify the file showed "Created successfully!"
 
 ### Cron jobs not firing
 → Check cron-job.org dashboard
@@ -248,14 +241,16 @@ After completing Steps 1-4, your system is fully autonomous:
 ### Emails not sending
 → Verify SendGrid API key in Vercel
 → Check SendGrid dashboard for delivery logs
-→ Email logs in Supabase: `SELECT * FROM public.email_logs;`
+→ Email logs: `SELECT * FROM public.email_logs;`
 
 ---
 
-## 📞 Need Help?
-
-1. **Schema errors:** Copy/paste error message → I'll fix
-2. **Missing tables:** I'll help recreate them
-3. **API issues:** I'll verify credentials
+**Files to Run:**
+- `backend/test-01-agents.sql`
+- `backend/test-02-social.sql`
+- `backend/test-03-email.sql`
+- `backend/test-04-cron-jobs.sql`
+- `backend/test-05-trend-research.sql`
+- `backend/test-06-cron-trend-update.sql`
 
 **Good luck! 🚀**

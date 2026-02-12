@@ -1,9 +1,18 @@
--- Autonomous Agent System - Database Schema (PROPER SEPARATION)
--- Run in Supabase SQL Editor to add agent tracking
+-- Agent System - Extracted from ACTIVATE_ALL.sql
+-- Run this in Supabase SQL Editor
 
--- ============================================
--- STEP 1: CREATE TABLES (no foreign keys)
--- ============================================
+CREATE TABLE IF NOT EXISTS public.agents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('cursor_cli', 'openhands', 'custom')),
+  status TEXT NOT NULL DEFAULT 'idle' CHECK (status IN ('idle', 'working', 'stuck', 'offline')),
+  current_project_id UUID,
+  last_heartbeat TIMESTAMP WITH TIME ZONE,
+  capabilities JSONB[],
+  max_parallel_tasks INTEGER DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 CREATE TABLE IF NOT EXISTS public.agent_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -29,19 +38,6 @@ CREATE TABLE IF NOT EXISTS public.agent_tasks (
   error TEXT,
   retry_count INTEGER DEFAULT 0,
   max_retries INTEGER DEFAULT 3
-);
-
-CREATE TABLE IF NOT EXISTS public.agents (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('cursor_cli','openhands','custom')),
-  status TEXT NOT NULL DEFAULT 'idle' CHECK (status IN ('idle','working','stuck','offline')),
-  current_project_id UUID,
-  last_heartbeat TIMESTAMP WITH TIME ZONE,
-  capabilities JSONB[],
-  max_parallel_tasks INTEGER DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.agent_logs (
@@ -70,47 +66,29 @@ CREATE TABLE IF NOT EXISTS public.project_agent_tracking (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================
--- STEP 2: CREATE INDEXES
--- ============================================
-
+CREATE INDEX IF NOT EXISTS idx_agents_status ON public.agents(status);
+CREATE INDEX IF NOT EXISTS idx_agents_type ON public.agents(type);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_status ON public.agent_tasks(status);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_priority ON public.agent_tasks(status, priority);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_project ON public.agent_tasks(project_id);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_agent ON public.agent_tasks(agent_id);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_next_task ON public.agent_tasks(agent_id, status, priority) WHERE status = 'queued';
-
-CREATE INDEX IF NOT EXISTS idx_agents_status ON public.agents(status);
-CREATE INDEX IF NOT EXISTS idx_agents_type ON public.agents(type);
-
 CREATE INDEX IF NOT EXISTS idx_agent_logs_agent ON public.agent_logs(agent_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_agent_logs_project ON public.agent_logs(project_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_agent_logs_level ON public.agent_logs(level, created_at DESC);
-
 CREATE INDEX IF NOT EXISTS idx_project_agent_tracking_project ON public.project_agent_tracking(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_agent_tracking_agent ON public.project_agent_tracking(agent_id);
 CREATE INDEX IF NOT EXISTS idx_project_agent_tracking_status ON public.project_agent_tracking(status);
 
--- ============================================
--- STEP 3: ADD FOREIGN KEYS (after tables exist)
--- ============================================
-
 ALTER TABLE public.agent_tasks ADD CONSTRAINT fk_agent_tasks_project FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 ALTER TABLE public.agent_tasks ADD CONSTRAINT fk_agent_tasks_agent FOREIGN KEY (agent_id) REFERENCES public.agents(id) ON DELETE SET NULL;
-
 ALTER TABLE public.agents ADD CONSTRAINT fk_agents_project FOREIGN KEY (current_project_id) REFERENCES public.projects(id) ON DELETE SET NULL;
-
 ALTER TABLE public.agent_logs ADD CONSTRAINT fk_agent_logs_agent FOREIGN KEY (agent_id) REFERENCES public.agents(id) ON DELETE CASCADE;
 ALTER TABLE public.agent_logs ADD CONSTRAINT fk_agent_logs_task FOREIGN KEY (task_id) REFERENCES public.agent_tasks(id) ON DELETE SET NULL;
 ALTER TABLE public.agent_logs ADD CONSTRAINT fk_agent_logs_project FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
-
 ALTER TABLE public.project_agent_tracking ADD CONSTRAINT fk_project_agent_tracking_project FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE;
 ALTER TABLE public.project_agent_tracking ADD CONSTRAINT fk_project_agent_tracking_agent FOREIGN KEY (agent_id) REFERENCES public.agents(id) ON DELETE SET NULL;
 ALTER TABLE public.project_agent_tracking ADD CONSTRAINT fk_project_agent_tracking_milestone FOREIGN KEY (current_milestone_id) REFERENCES public.milestones(id) ON DELETE SET NULL;
-
--- ============================================
--- STEP 4: RLS POLICIES
--- ============================================
 
 ALTER TABLE public.agents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_tasks ENABLE ROW LEVEL SECURITY;
@@ -153,45 +131,6 @@ CREATE POLICY "Clients can read their project tracking" ON public.project_agent_
 DROP POLICY IF EXISTS "Admins can modify tracking" ON public.project_agent_tracking;
 CREATE POLICY "Admins can modify tracking" ON public.project_agent_tracking FOR ALL USING (EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
--- ============================================
--- STEP 5: FUNCTIONS
--- ============================================
-
-CREATE OR REPLACE FUNCTION public.update_agent_heartbeat(p_agent_id UUID) RETURNS VOID AS $$
-BEGIN
-  UPDATE public.agents SET last_heartbeat = NOW(), updated_at = NOW() WHERE id = p_agent_id;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION public.add_agent_log(p_agent_id UUID, p_task_id UUID DEFAULT NULL, p_project_id UUID, p_level TEXT, p_message TEXT, p_metadata JSONB DEFAULT '{}') RETURNS UUID AS $$
-DECLARE v_log_id UUID;
-BEGIN
-  INSERT INTO public.agent_logs (agent_id, task_id, project_id, level, message, metadata) VALUES (p_agent_id, p_task_id, p_project_id, p_level, p_message, p_metadata) RETURNING id INTO v_log_id;
-  RETURN v_log_id;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION public.find_next_task(p_agent_id UUID) RETURNS TABLE (task_id UUID, project_id UUID, type TEXT, description TEXT, priority TEXT) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT t.id as task_id, t.project_id, t.type, t.description, t.priority
-  FROM public.agent_tasks t
-  WHERE t.agent_id = p_agent_id AND t.status = 'queued'
-  ORDER BY t.priority DESC, t.created_at ASC
-  LIMIT 1;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE OR REPLACE FUNCTION public.update_agent_tracking(p_project_id UUID, p_status TEXT, p_current_milestone_id UUID DEFAULT NULL) RETURNS VOID AS $$
-BEGIN
-  UPDATE public.project_agent_tracking SET status = p_status, current_milestone_id = p_current_milestone_id, updated_at = NOW() WHERE project_id = p_project_id;
-END;
-$$ LANGUAGE plpgsql;
-
--- ============================================
--- STEP 6: TRIGGERS
--- ============================================
-
 CREATE OR REPLACE FUNCTION public.update_agents_updated_at() RETURNS TRIGGER AS $$ BEGIN NEW.updated_at := NOW(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
@@ -204,12 +143,8 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trigger_tracking_updated_at ON public.project_agent_tracking;
 CREATE TRIGGER trigger_tracking_updated_at BEFORE UPDATE ON public.project_agent_tracking FOR EACH ROW EXECUTE FUNCTION public.update_tracking_updated_at();
 
--- ============================================
--- STEP 7: SEED DATA
--- ============================================
+INSERT INTO public.agents (name, type, status, capabilities, max_parallel_tasks) VALUES ('Cursor-Agent-1', 'cursor_cli', 'idle', ARRAY['frontend','backend','fullstack','components','pages','styling'], 1) ON CONFLICT DO NOTHING;
 
-INSERT INTO public.agents (name, type, status, capabilities, max_parallel_tasks)
-VALUES ('Cursor-Agent-1', 'cursor_cli', 'idle', ARRAY['frontend','backend','fullstack','components','pages','styling']::JSONB[], 1)
-ON CONFLICT DO NOTHING;
-
-SELECT 'Autonomous Agent System database schema created successfully' as status;
+SELECT '====================================' as result;
+SELECT 'Agent System: Created successfully!' as result;
+SELECT '====================================' as result;
