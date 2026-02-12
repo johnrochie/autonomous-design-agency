@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.cron_jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL UNIQUE,
   job_type TEXT NOT NULL CHECK (job_type IN (
+    'trend_research',
     'social_media_post',
     'agent_task_execution',
     'email_send',
@@ -16,18 +17,19 @@ CREATE TABLE IF NOT EXISTS public.cron_jobs (
     'health_check',
     'backup',
     'cleanup'
-  )),
+   )),
   frequency TEXT NOT NULL CHECK (frequency IN (
     'every_minute',
     'every_5_minutes',
     'every_15_minutes',
     'every_hour',
+    'every_3_hours',
     'every_6_hours',
     'every_12_hours',
     'daily',
     'weekly',
     'monthly'
-  )),
+   )),
   status TEXT NOT NULL DEFAULT 'idle' CHECK (status IN (
     'idle',
     'running',

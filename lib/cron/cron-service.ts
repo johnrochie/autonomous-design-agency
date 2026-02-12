@@ -10,6 +10,7 @@ import { supabase } from '../supabase';
 // ============================================
 
 export type CronJobType =
+  | 'trend_research'
   | 'social_media_post'
   | 'agent_task_execution'
   | 'email_send'
@@ -24,6 +25,7 @@ export type CronJobFrequency =
   | 'every_5_minutes'
   | 'every_15_minutes'
   | 'every_hour'
+  | 'every_3_hours'
   | 'every_6_hours'
   | 'every_12_hours'
   | 'daily'
@@ -204,6 +206,9 @@ async function executeJobLogic(job: CronJob): Promise<any> {
   console.log(`[Cron Job] Executing: ${job.name} (${job.job_type})`);
 
   switch (job.job_type) {
+    case 'trend_research':
+      return await executeTrendResearch(job);
+
     case 'social_media_post':
       return await executeSocialMediaPosting(job);
 
@@ -424,6 +429,22 @@ async function executeBackup(job: CronJob): Promise<any> {
     message: 'Backup placeholder',
     note: 'Implement automated backups',
   };
+}
+
+/**
+ * Trend Research Job
+ */
+async function executeTrendResearch(job: CronJob): Promise<any> {
+  console.log('[Cron Job] Trend Research: Analyzing trending topics...');
+
+  // Import trend research service
+  const { executeTrendResearch: researchTrends } = await import('@/lib/trend/trend-research');
+
+  const result = await researchTrends();
+
+  console.log(`[Cron Job] Trend Research: ${result.researched} quer${result.researched === 1 ? 'y' : 'ies'}, ${result.topics_updated} topics updated`);
+
+  return result;
 }
 
 /**
