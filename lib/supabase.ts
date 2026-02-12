@@ -246,7 +246,7 @@ export async function generateProjectQuote(projectId: string) {
   if (updateError) throw updateError;
 
   // Insert quote breakdown rows
-  const { error: breakdownError } = await supabase
+  const { data: breakdowns, error: breakdownError } = await supabase
     .from('quote_breakdowns')
     .insert(
       quote.breakdown.map((item) => ({
@@ -531,6 +531,13 @@ export async function updateMilestoneStatus(
     .single();
 
   if (error) throw error;
+
+  // TODO: Send email notification when milestone is completed
+  // See docs/SENDGRID-SETUP.md for setup instructions
+  console.log('Milestone status updated to:', status);
+  if (status === 'completed') {
+    console.log('(Milestone completion email would be sent when SendGrid is configured)');
+  }
 
   return data as Milestone;
 }
