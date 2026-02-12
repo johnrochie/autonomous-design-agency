@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_trending_topics_search_volume ON public.trending_
 -- RESEARCH LOGS TABLE - Track research history
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.research_logs (
-  id UUID PRIMARY KEY DEFAULT DEFAULT gen_random_uuid(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   research_type TEXT NOT NULL CHECK (research_type IN ('trend_search', 'news_scan', 'competitor_analysis')),
   search_query TEXT,
   results_found INTEGER,

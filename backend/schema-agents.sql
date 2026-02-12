@@ -1,29 +1,8 @@
--- Autonomous Agent System - Database Schema
+-- Autonomous Agent System - Database Schema (FIXED NO IF NOT EXISTS ON POLICIES)
 -- Run in Supabase SQL Editor to add agent tracking
 
 -- ============================================
--- AGENTS TABLE - Agent pool management
--- ============================================
-CREATE TABLE IF NOT EXISTS public.agents (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('cursor_cli', 'openhands', 'custom')),
-  status TEXT NOT NULL DEFAULT 'idle' CHECK (status IN ('idle', 'working', 'stuck', 'offline')),
-  current_project_id UUID REFERENCES public.projects(id) ON DELETE SET NULL,
-  current_task_id UUID REFERENCES public.agent_tasks(id) ON DELETE SET NULL,
-  last_heartbeat TIMESTAMP WITH TIME ZONE,
-  capabilities JSONB[] DEFAULT '{}',
-  max_parallel_tasks INTEGER DEFAULT 1,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Index: Find idle agents
-CREATE INDEX IF NOT EXISTS idx_agents_status ON public.agents(status);
-CREATE INDEX IF NOT EXISTS idx_agents_type ON public.agents(type);
-
--- ============================================
--- AGENT TASKS TABLE - Task queue for agents
+-- AGENT TASKS TABLE - Task queue for agents (CREATE FIRST)
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.agent_tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,22 +41,28 @@ CREATE TABLE IF NOT EXISTS public.agent_tasks (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   started_at TIMESTAMP WITH TIME ZONE,
   completed_at TIMESTAMP WITH TIME ZONE,
+  duration_ms INTEGER,
   result JSONB,
   error TEXT,
   retry_count INTEGER DEFAULT 0,
   max_retries INTEGER DEFAULT 3
 );
 
--- Index: Find queued tasks by priority
-CREATE INDEX IF NOT EXISTS idx_agent_tasks_status ON public.agent_tasks(status);
-CREATE INDEX IF NOT EXISTS idx_agent_tasks_priority ON public.agent_tasks(status, priority);
-CREATE INDEX IF NOT EXISTS idx_agent_tasks_project ON public.agent_tasks(project_id);
-CREATE INDEX IF NOT EXISTS idx_agent_tasks_agent ON public.agent_tasks(agent_id);
-
--- Composite index: Find next task for an agent
-CREATE INDEX IF NOT EXISTS idx_agent_tasks_next_task
-  ON public.agent_tasks(agent_id, status, priority)
-  WHERE status = 'queued';
+-- ============================================
+-- AGENTS TABLE - Agent pool management (CREATE SECOND)
+-- ============================================
+CREATE TABLE IF NOT EXISTS public.agents (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('cursor_cli', 'openhands', 'custom')),
+  status TEXT NOT NULL DEFAULT 'idle' CHECK (status IN ('idle', 'working', 'stuck', 'offline')),
+  current_project_id UUID REFERENCES public.projects(id) ON DELETE SET NULL,
+  last_heartbeat TIMESTAMP WITH TIME ZONE,
+  capabilities JSONB[] DEFAULT '{}',
+  max_parallel_tasks INTEGER DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
 -- ============================================
 -- AGENT LOGS TABLE - Agent activity tracking
@@ -92,11 +77,6 @@ CREATE TABLE IF NOT EXISTS public.agent_logs (
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- Index: Query recent agent logs
-CREATE INDEX IF NOT EXISTS idx_agent_logs_agent ON public.agent_logs(agent_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_agent_logs_project ON public.agent_logs(project_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_agent_logs_level ON public.agent_logs(level, created_at DESC);
 
 -- ============================================
 -- PROJECT AGENT TRACKING TABLE - Track agent per project
@@ -130,149 +110,123 @@ CREATE TABLE IF NOT EXISTS public.project_agent_tracking (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Index: Query active projects by agent
+-- ============================================
+-- INDEXES
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_status ON public.agent_tasks(status);
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_priority ON public.agent_tasks(status, priority);
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_project ON public.agent_tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_agent ON public.agent_tasks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_next_task ON public.agent_tasks(agent_id, status, priority) WHERE status = 'queued';
+CREATE INDEX IF NOT EXISTS idx_agents_status ON public.agents(status);
+CREATE INDEX IF NOT EXISTS idx_agents_type ON public.agents(type);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_agent ON public.agent_logs(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_project ON public.agent_logs(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_logs_level ON public.agent_logs(level, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_project_agent_tracking_project ON public.project_agent_tracking(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_agent_tracking_agent ON public.project_agent_tracking(agent_id);
 CREATE INDEX IF NOT EXISTS idx_project_agent_tracking_status ON public.project_agent_tracking(status);
 
 -- ============================================
--- ROW LEVEL SECURITY POLICIES
+-- ROW LEVEL SECURITY - Enable
 -- ============================================
-
--- Enable RLS on all agent tables
 ALTER TABLE public.agents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.agent_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.project_agent_tracking ENABLE ROW LEVEL SECURITY;
 
--- AGENTS RLS - Anyone can read, only admins can modify
-CREATE POLICY "Anyone can read agents"
-  ON public.agents FOR SELECT USING (true);
+-- ============================================
+-- ROW LEVEL SECURITY - Policies
+-- ============================================
 
-CREATE POLICY "Only admins can insert agents"
-  ON public.agents FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+-- AGENTS
+DROP POLICY IF EXISTS "Anyone can read agents" ON public.agents;
+CREATE POLICY "Anyone can read agents" ON public.agents FOR SELECT USING (true);
 
-CREATE POLICY "Only admins can update agents"
-  ON public.agents FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+DROP POLICY IF EXISTS "Only admins can insert agents" ON public.agents;
+CREATE POLICY "Only admins can insert agents" ON public.agents FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
-CREATE POLICY "Only admins can delete agents"
-  ON public.agents FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+DROP POLICY IF EXISTS "Only admins can update agents" ON public.agents;
+CREATE POLICY "Only admins can update agents" ON public.agents FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
--- AGENT TASKS RLS - Clients can read their project tasks, admins full access
-CREATE POLICY "Clients can read their project tasks"
-  ON public.agent_tasks FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.projects
-      INNER JOIN public.clients ON projects.client_id = clients.id
-      INNER JOIN public.profiles ON clients.user_id = profiles.id
-      WHERE projects.id = agent_tasks.project_id
-      AND profiles.id = auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Only admins can delete agents" ON public.agents;
+CREATE POLICY "Only admins can delete agents" ON public.agents FOR DELETE USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
-CREATE POLICY "Admins can read all tasks"
-  ON public.agent_tasks FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+-- AGENT TASKS
+DROP POLICY IF EXISTS "Clients can read their project tasks" ON public.agent_tasks;
+CREATE POLICY "Clients can read their project tasks" ON public.agent_tasks FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.projects
+    INNER JOIN public.clients ON projects.client_id = clients.id
+    INNER JOIN public.profiles ON clients.user_id = profiles.id
+    WHERE projects.id = agent_tasks.project_id AND profiles.id = auth.uid()
+  )
+);
 
-CREATE POLICY "Only admins can modify tasks"
-  ON public.agent_tasks FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+DROP POLICY IF EXISTS "Admins can read all tasks" ON public.agent_tasks;
+CREATE POLICY "Admins can read all tasks" ON public.agent_tasks FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
--- AGENT LOGS RLS - Clients can read their project logs, admins full access
-CREATE POLICY "Clients can read their project logs"
-  ON public.agent_logs FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.projects
-      INNER JOIN public.clients ON projects.client_id = clients.id
-      INNER JOIN public.profiles ON clients.user_id = profiles.id
-      WHERE projects.id = agent_logs.project_id
-      AND profiles.id = auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Only admins can modify tasks" ON public.agent_tasks;
+CREATE POLICY "Only admins can modify tasks" ON public.agent_tasks FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
-CREATE POLICY "Admins can read all logs"
-  ON public.agent_logs FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+-- AGENT LOGS
+DROP POLICY IF EXISTS "Clients can read their project logs" ON public.agent_logs;
+CREATE POLICY "Clients can read their project logs" ON public.agent_logs FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.projects
+    INNER JOIN public.clients ON projects.client_id = clients.id
+    INNER JOIN public.profiles ON clients.user_id = profiles.id
+    WHERE projects.id = agent_logs.project_id AND profiles.id = auth.uid()
+  )
+);
 
-CREATE POLICY "Only admins can insert logs"
-  ON public.agent_logs FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+DROP POLICY IF EXISTS "Admins can read all logs" ON public.agent_logs;
+CREATE POLICY "Admins can read all logs" ON public.agent_logs FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
--- PROJECT AGENT TRACKING RLS - Clients can read their tracking, admins full access
-CREATE POLICY "Clients can read their project tracking"
-  ON public.project_agent_tracking FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.projects
-      INNER JOIN public.clients ON projects.client_id = clients.id
-      INNER JOIN public.profiles ON clients.user_id = profiles.id
-      WHERE projects.id = project_agent_tracking.project_id
-      AND profiles.id = auth.uid()
-    )
-  );
+DROP POLICY IF EXISTS "Only admins can insert logs" ON public.agent_logs;
+CREATE POLICY "Only admins can insert logs" ON public.agent_logs FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
-CREATE POLICY "Admins can modify tracking"
-  ON public.project_agent_tracking FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
+-- PROJECT AGENT TRACKING
+DROP POLICY IF EXISTS "Clients can read their project tracking" ON public.project_agent_tracking;
+CREATE POLICY "Clients can read their project tracking" ON public.project_agent_tracking FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM public.projects
+    INNER JOIN public.clients ON projects.client_id = clients.id
+    INNER JOIN public.profiles ON clients.user_id = profiles.id
+    WHERE projects.id = project_agent_tracking.project_id AND profiles.id = auth.uid()
+  )
+);
+
+DROP POLICY IF EXISTS "Admins can modify tracking" ON public.project_agent_tracking;
+CREATE POLICY "Admins can modify tracking" ON public.project_agent_tracking FOR ALL USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 
 -- ============================================
--- FUNCTION: Update agent heartbeat
+-- FUNCTIONS
 -- ============================================
+
 CREATE OR REPLACE FUNCTION public.update_agent_heartbeat(p_agent_id UUID)
 RETURNS VOID AS $$
 BEGIN
-  UPDATE public.agents
-  SET last_heartbeat = NOW(),
-      updated_at = NOW()
-  WHERE id = p_agent_id;
+  UPDATE public.agents SET last_heartbeat = NOW(), updated_at = NOW() WHERE id = p_agent_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================
--- FUNCTION: Add agent log entry
--- ============================================
 CREATE OR REPLACE FUNCTION public.add_agent_log(
   p_agent_id UUID,
   p_task_id UUID DEFAULT NULL,
@@ -288,14 +242,10 @@ BEGIN
   INSERT INTO public.agent_logs (agent_id, task_id, project_id, level, message, metadata)
   VALUES (p_agent_id, p_task_id, p_project_id, p_level, p_message, p_metadata)
   RETURNING id INTO v_log_id;
-
   RETURN v_log_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================
--- FUNCTION: Find next task for agent
--- ============================================
 CREATE OR REPLACE FUNCTION public.find_next_task(p_agent_id UUID)
 RETURNS TABLE (
   task_id UUID,
@@ -313,18 +263,12 @@ BEGIN
     t.description,
     t.priority
   FROM public.agent_tasks t
-  WHERE t.agent_id = p_agent_id
-    AND t.status = 'queued'
-  ORDER BY
-    t.priority DESC,
-    t.created_at ASC
+  WHERE t.agent_id = p_agent_id AND t.status = 'queued'
+  ORDER BY t.priority DESC, t.created_at ASC
   LIMIT 1;
 END;
 $$ LANGUAGE plpgsql;
 
--- ============================================
--- FUNCTION: Update project agent tracking
--- ============================================
 CREATE OR REPLACE FUNCTION public.update_agent_tracking(
   p_project_id UUID,
   p_status TEXT,
@@ -333,16 +277,15 @@ CREATE OR REPLACE FUNCTION public.update_agent_tracking(
 RETURNS VOID AS $$
 BEGIN
   UPDATE public.project_agent_tracking
-  SET status = p_status,
-      current_milestone_id = p_current_milestone_id,
-      updated_at = NOW()
+  SET status = p_status, current_milestone_id = p_current_milestone_id, updated_at = NOW()
   WHERE project_id = p_project_id;
 END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
--- TRIGGER: Auto-update updated_at for agents
+-- TRIGGERS
 -- ============================================
+
 CREATE OR REPLACE FUNCTION public.update_agents_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -351,13 +294,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_agents_updated_at ON public.agents;
 CREATE TRIGGER trigger_agents_updated_at BEFORE UPDATE
   ON public.agents FOR EACH ROW
   EXECUTE FUNCTION public.update_agents_updated_at();
 
--- ============================================
--- TRIGGER: Auto-update updated_at for project tracking
--- ============================================
 CREATE OR REPLACE FUNCTION public.update_tracking_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -366,12 +307,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_tracking_updated_at ON public.project_agent_tracking;
 CREATE TRIGGER trigger_tracking_updated_at BEFORE UPDATE
   ON public.project_agent_tracking FOR EACH ROW
   EXECUTE FUNCTION public.update_tracking_updated_at();
 
 -- ============================================
--- SEED DATA: Create initial Cursor CLI agent
+-- SEED DATA
 -- ============================================
 INSERT INTO public.agents (name, type, status, capabilities, max_parallel_tasks)
 VALUES (
@@ -382,14 +324,5 @@ VALUES (
   1
 )
 ON CONFLICT DO NOTHING;
-
--- ============================================
--- COMPLETED
--- ============================================
--- Schema created successfully
--- RLS policies applied
--- Functions: update_agent_heartbeat, add_agent_log, find_next_task, update_agent_tracking
--- Triggers: Auto-update timestamps
--- Seed data: Initial Cursor CLI agent
 
 SELECT 'Autonomous Agent System database schema created successfully' as status;
