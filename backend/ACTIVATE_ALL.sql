@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.agents (
   status TEXT NOT NULL DEFAULT 'idle' CHECK (status IN ('idle', 'working', 'stuck', 'offline')),
   current_project_id UUID,
   last_heartbeat TIMESTAMP WITH TIME ZONE,
-  capabilities JSONB[] DEFAULT '{}'::jsonb,
+  capabilities JSONB[],
   max_parallel_tasks INTEGER DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.agent_tasks (
   description TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','in_progress','completed','failed','escalated')),
   priority TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('low','medium','high','urgent')),
-  depends_on UUID[] DEFAULT '{}'::jsonb,
+  depends_on UUID[],
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   started_at TIMESTAMP WITH TIME ZONE,
   completed_at TIMESTAMP WITH TIME ZONE,
@@ -76,8 +76,8 @@ CREATE TABLE IF NOT EXISTS public.social_posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   platform TEXT NOT NULL CHECK (platform IN ('twitter','facebook','linkedin','instagram')),
   content TEXT NOT NULL,
-  hashtags TEXT[] DEFAULT '{}'::jsonb,
-  media_urls TEXT[] DEFAULT '{}'::jsonb,
+  hashtags TEXT[],
+  media_urls TEXT[],
   post_id_external TEXT,
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','pending_approval','approved','scheduled','posted','failed','rejected')),
   scheduled_at TIMESTAMP WITH TIME ZONE,
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS public.brand_guidelines (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   key_name TEXT NOT NULL UNIQUE,
   value TEXT,
-  metadata JSONB DEFAULT '{}'::jsonb,
+  metadata JSONB DEFAULT '{},
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS public.content_topics (
   last_used TIMESTAMP WITH TIME ZONE,
   usage_count INTEGER DEFAULT 0,
   trend_score REAL DEFAULT 0,
-  trend_sources TEXT[] DEFAULT '{}'::jsonb,
+  trend_sources TEXT[],
   last_researched TIMESTAMP WITH TIME ZONE,
   research_notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS public.trending_topics (
   last_trended TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   trending_days INTEGER DEFAULT 0,
   category TEXT CHECK (category IN ('AI','web_dev','frameworks','tools','tech_news','business')),
-  metadata JSONB DEFAULT '{}'::jsonb,
+  metadata JSONB DEFAULT '{},
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS public.research_logs (
   topics_extracted TEXT[],
   sources TEXT[],
   relevance_score REAL,
-  metadata JSONB DEFAULT '{}'::jsonb,
+  metadata JSONB DEFAULT '{},
   started_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   completed_at TIMESTAMP WITH TIME ZONE,
   success BOOLEAN,
@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS public.email_logs (
   clicked_at TIMESTAMP WITH TIME ZONE,
   failed_at TIMESTAMP WITH TIME ZONE,
   error_message TEXT,
-  metadata JSONB DEFAULT '{}'::jsonb,
+  metadata JSONB DEFAULT '{},
   project_id UUID,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS public.cron_jobs (
   runs_count INTEGER DEFAULT 0,
   success_count INTEGER DEFAULT 0,
   failure_count INTEGER DEFAULT 0,
-  config JSONB DEFAULT '{}'::jsonb,
+  config JSONB DEFAULT '{},
   enabled BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
