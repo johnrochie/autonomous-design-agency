@@ -3,7 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Return null during build time when env vars are not available
+// Ensure env vars are present - required for operation
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase environment variables not set. Please check .env.local');
+}
+
+// Initialize supabase client
+// Note: May return null if env vars not set (build time, dev without env vars)
 export const supabase = supabaseUrl && supabaseAnonKey
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
