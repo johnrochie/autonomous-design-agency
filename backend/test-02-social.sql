@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS public.content_topics (
 CREATE INDEX IF NOT EXISTS idx_social_posts_status ON public.social_posts(status);
 CREATE INDEX IF NOT EXISTS idx_social_posts_platform ON public.social_posts(platform);
 CREATE INDEX IF NOT EXISTS idx_social_posts_scheduled_at ON public.social_posts(scheduled_at) WHERE status = 'scheduled';
-CREATE INDEX IF NOT EXISTS idx_social_posts_ready_to_post ON public.social_posts(scheduled_at, status) WHERE status = 'approved' AND scheduled_at <= NOW() + INTERVAL '1 hour';
+CREATE INDEX IF NOT EXISTS idx_social_posts_ready_to_post ON public.social_posts(scheduled_at, status) WHERE status = 'approved';
 CREATE INDEX IF NOT EXISTS idx_social_analytics_post_id ON public.social_analytics(social_post_id);
 CREATE INDEX IF NOT EXISTS idx_social_analytics_recorded_at ON public.social_analytics(recorded_at DESC);
 CREATE INDEX IF NOT EXISTS idx_content_topics_trend_score ON public.content_topics(trend_score DESC) WHERE trend_score > 0;

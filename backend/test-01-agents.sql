@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.agents (
   status TEXT NOT NULL DEFAULT 'idle' CHECK (status IN ('idle', 'working', 'stuck', 'offline')),
   current_project_id UUID,
   last_heartbeat TIMESTAMP WITH TIME ZONE,
-  capabilities JSONB[],
+  capabilities JSONB,
   max_parallel_tasks INTEGER DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -143,7 +143,17 @@ $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trigger_tracking_updated_at ON public.project_agent_tracking;
 CREATE TRIGGER trigger_tracking_updated_at BEFORE UPDATE ON public.project_agent_tracking FOR EACH ROW EXECUTE FUNCTION public.update_tracking_updated_at();
 
-INSERT INTO public.agents (name, type, status, capabilities, max_parallel_tasks) VALUES ('Cursor-Agent-1', 'cursor_cli', 'idle', ARRAY['frontend','backend','fullstack','components','pages','styling'], 1) ON CONFLICT DO NOTHING;
+INSERT INTO public.agents (name, type, status, capabilities, max_parallel_tasks) VALUES ('Cursor-Agent-1', 'cursor_cli', 'idle', '["frontend","backend","fullstack","components","pages","styling"]'::JSONB, 1) ON CONFLICT DO NOTHING;
+
+-- Verify insert
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.agents WHERE name = 'Cursor-Agent-1') THEN
+    RAISE NOTICE '✅ Cursor-Agent-1 inserted successfully!';
+  ELSE
+    RAISE NOTICE '❌ Cursor-Agent-1 NOT inserted!';
+  END IF;
+END $$;
 
 SELECT '====================================' as result;
 SELECT 'Agent System: Created successfully!' as result;
