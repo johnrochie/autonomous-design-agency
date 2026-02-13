@@ -249,7 +249,7 @@ export default function ClientProjectPage({ params }: { params: { id: string } |
             )}
 
             {/* Quote Actions - Accept/Decline */}
-            <QuoteActions projectId={project.id} status={project.quote_status || undefined} />
+            <QuoteActions projectId={project.id} projectStatus={project.status} quoteStatus={project.quote_status || undefined} />
 
             {/* Messages Panel */}
             <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden">

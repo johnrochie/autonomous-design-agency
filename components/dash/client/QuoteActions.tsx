@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-export default function QuoteActions({ projectId, status }: { projectId: string; status?: string }) {
+export default function QuoteActions({ projectId, projectStatus, quoteStatus }: { projectId: string; projectStatus?: string; quoteStatus?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [accepting, setAccepting] = useState(false);
@@ -89,7 +89,7 @@ export default function QuoteActions({ projectId, status }: { projectId: string;
   };
 
   // Don't show buttons if already confirmed, cancelled, or not quoted yet
-  if (!status || status === 'confirmed' || status === 'cancelled' || status !== 'quoted') {
+  if (!projectStatus || projectStatus === 'confirmed' || projectStatus === 'cancelled' || projectStatus !== 'quoted') {
     return null;
   }
 
