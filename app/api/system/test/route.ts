@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 export async function GET() {
   try {
     // System status object
-    const status = {
+    const status: any = {
       timestamp: new Date().toISOString(),
       system: {
         database: false,
@@ -14,8 +14,8 @@ export async function GET() {
         emailTracking: false,
         trendResearch: false,
       },
-      tables: {},
-      seedData: {},
+      tables: {} as Record<string, boolean>,
+      seedData: {} as Record<string, any>,
       errors: [] as string[],
     };
 

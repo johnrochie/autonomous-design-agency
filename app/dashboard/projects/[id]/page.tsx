@@ -7,6 +7,7 @@ import MessagePanel from '@/components/shared/MessagePanel';
 import MilestoneViewer from '@/components/shared/MilestoneViewer';
 import { ArrowLeft, FileText } from 'lucide-react';
 import { formatAmount } from '@/lib/quote-generator';
+import QuoteActions from '@/components/dash/client/QuoteActions';
 
 interface Message {
   id: string;
@@ -246,6 +247,9 @@ export default function ClientProjectPage({ params }: { params: { id: string } |
                 </div>
               </div>
             )}
+
+            {/* Quote Actions - Accept/Decline */}
+            <QuoteActions projectId={project.id} status={project.quote_status || undefined} />
 
             {/* Messages Panel */}
             <div className="bg-[#1a1a1a] rounded-2xl overflow-hidden">
